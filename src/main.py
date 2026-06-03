@@ -1,6 +1,10 @@
 import os, pickle, logging, numpy as np
 log = logging.getLogger(__name__)
 
+import sys                                 # to save the console in a file
+log_file = open("run_log.txt", "w")
+sys.stdout = log_file
+
 import hydra
 from omegaconf import OmegaConf #,DictConfig
 from hydra.core.hydra_config import HydraConfig
@@ -96,6 +100,27 @@ def run(cfg):
         # it must be after split to mask the test teams (they should be unknown)
         output_split = cfg.data.output + splitstr #all models of anytype should be under a split strategy
         teamsvecs['skillcoverage'] = domain_cls.gen_skill_coverage(teamsvecs, output_split, skipteams=splits['test'])
+
+        if 'train' in cfg and cfg.fair.vivafemme :
+            import sys, tempfile
+            from Adila.src import plot
+            from scipy.sparse import lil_matrix
+            adila_root_path = os.path.join(os.path.dirname(__file__), "Adila")
+            sys.path.append(adila_root_path)
+            from Adila.src.adila import Adila
+            adila = Adila(teamsvecs, splits, cfg.fair.fgender)
+            assert len(cfg.fair.attribute) == 1, 'for vivafemme, attribute should be single value.'
+            if cfg.fair.attribute == 'popularity':
+                assert len(cfg.fair.is_popular_alg) == 1, 'for vivafemme, is_popular_alg should be single value.'
+            with tempfile.TemporaryDirectory() as tmp_output:
+                _, minorities, _ = adila.prep(tmp_output, fair_notion='dp', attribute=cfg.fair.attribute[0], is_popular_alg=cfg.fair.is_popular_alg[0], coef=cfg.fair.is_popular_coef, plot=plot)
+            #fvector = np.zeros(teamsvecs['member'].shape[1], dtype=bool)
+            #fvector[minorities] = True
+            fvector = lil_matrix((1, teamsvecs['member'].shape[1]), dtype=bool)
+            fvector[0, minorities] = True
+            teamsvecs['fvector'] = fvector
+
+
 
         if 'embedding' in cfg.data and cfg.data.embedding.class_method:
             # Get command-line overrides for embedding. Kinda tricky as we dynamically override a subconfig.

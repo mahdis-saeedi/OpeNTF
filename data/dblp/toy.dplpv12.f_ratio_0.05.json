@@ -1,0 +1,17 @@
+[
+ {"id":1091,"authors":[{"name":"Makoto Satoh","org":"Shinshu University","id":2312688602},{"name":"Ryo Muramatsu","org":"Shinshu University","id":2482909946},{"name":"Mizue Kayama","org":"Shinshu University","id":2128134587},{"name":"Kazunori Itoh","org":"Shinshu University","id":2101782692},{"name":"Masami Hashimoto","org":"Shinshu University","id":2114054191},{"name":"Makoto Otani","org":"Shinshu University","id":1989208940},{"name":"Michio Shimizu","org":"Nagano Prefectural College","id":2134989941},{"name":"Masahiko Sugimoto","org":"Takushoku University, Hokkaido Junior College","id":2307479915}],"title":"Preliminary Design of a Network Protocol Learning Tool Based on the Comprehension of High School Students: Design by an Empirical Study Using a Simple Mind Map","year":2013,"n_citation":1,"page_start":"89","page_end":"93","doc_type":"Conference","publisher":"Springer, Berlin, Heidelberg","volume":"","issue":"","doi":"10.1007/978-3-642-39476-8_19","references":[2005687710,2018037215],"indexed_abstract":{"IndexLength":58,"InvertedIndex":{"tool.":[42],"study":[4],"aim":[37],"purpose":[1],"scientific":[17],"for":[11],"aspects":[18],"students":[14,46],"focus":[27],"hands-on":[47],"learning":[9,41],"experience":[48],"our":[40],"we":[26],"network":[33,56],"The":[0],"More":[24],"high":[12],"protocols.":[57],"school":[13],"and":[21],"of":[2,19,32,55],"communication":[22],"protocols":[34],"gives":[45],"on":[28],"a":[8],"studying":[15],"specifically,":[25],"this":[3],"understand":[51],"is":[5],"develop":[7,39],"Our":[43],"tool":[10,44],"the":[16,29,36,52],"help":[50],"as":[35],"principles":[31,54],"information":[20],"networks.":[23],"to":[6,38,49],"basic":[30,53]}},"fos":[{"name":"Telecommunications network","w":0.45139},{"name":"Computer science","w":0.45245},{"name":"Mind map","w":0.5347},{"name":"Human–computer interaction","w":0.47011},{"name":"Multimedia","w":0.46629},{"name":"Empirical research","w":0.49737},{"name":"Comprehension","w":0.47042},{"name":"Communications protocol","w":0.51907}],"venue":{"raw":"International Conference on Human-Computer Interaction","id":1127419992,"type":"C"},
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+]

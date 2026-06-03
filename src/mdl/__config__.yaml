@@ -1,12 +1,17 @@
-batch_size: 1000 # batch_size for loaders
+batch_size: 1 # batch_size for loaders
 epochs: 100 # num max epochs
-nsd: unigram_b # negetative sampling distribution (heuristics): uniform, unigram, unigram_b
+nsd:  # negetative sampling distribution (heuristics): uniform, unigram, unigram_b
 ns: 5 # number of negative experts to upweight
 lr: 0.001 # learning rate
 es: 5 # earlystopping's patience. to bypass, set it to a higher value than epoch
 h: [128] #linear layers
 spe: # will be overriden dynamically in ./src/main.py from root ./__config__.yaml
-
+vivafemme : #R. Moasses, D. Rajaei, H. Loghmani, M. Saeedi, H. Fani; vivafemme: Mitigating Gender Bias in Neural Team Recommendation via Female-Advocate Loss Regularization. BIAS-SIGIR 2024. https://link.springer.com/chapter/10.1007/978-3-031-71975-2_6
+  ftpw : 0
+  ftnw : 0
+  mtpw : 0
+  mtnw : 0
+  Ftpw : 0 #all female experts are in the team.
 rnd:
   b: ${batch_size}
 
@@ -21,11 +26,15 @@ fnn:
   spe: ${spe}
   l: bce  # bce: binary x-entropy, csl: curriculum superloss, cdp: curriculum data parameters,
   #E.g., 1M experts/labels but each team has 5 experts at max, so, p=5/1M. When 1/p, it becomes very large and creates training istability though!
-  tpw: 10 # 10–20 (start), tune carefully up to 1/p where p is the average ratio of TP labels (true experts), emphasizes rare positives.
-  tnw: 1 # usually leave as is, or reduce slightly
+  tpw: 0 # 10–20 (start), tune carefully up to 1/p where p is the average ratio of TP labels (true experts), emphasizes rare positives.
+  tnw: 0 # usually leave as is, or reduce slightly
   # Dashti, Samet, Fani; Effective Neural Team Formation via Negative Samples. CIKM2022. https://dl.acm.org/doi/10.1145/3511808.3557590
   nsd: ${nsd} # negetative sampling distribution (heuristics): uniform, unigram, unigram_b
-
+  ftpw: ${vivafemme.ftpw}
+  ftnw: ${vivafemme.ftnw}
+  mtpw: ${vivafemme.mtpw}
+  mtnw: ${vivafemme.mtnw}
+  Ftpw: ${vivafemme.Ftpw}
 #Hamidi Rad, Fani, Kargar, Szlichta, Bagheri; Learning to Form Skill-based Teams of Experts. CIKM2020. https://dl.acm.org/doi/10.1145/3340531.3412140
 bnn:
   #thanks to bayesian-torch, all architectural things could be the same as fnn! See https://github.com/IntelLabs/bayesian-torch
@@ -38,9 +47,14 @@ bnn:
   spe: ${spe}
   l: bce  # bce: binary x-entropy, csl: curriculum superloss, cdp: curriculum data parameters,
   #E.g., 1M experts/labels but each team has 5 experts at max, so, p=5/1M. When 1/p, it becomes very large and creates training istability though!
-  tpw: 10 # 10–20 (start), tune carefully up to 1/p where p is the average ratio of TP labels (true experts), emphasizes rare positives.
+  tpw: 1 # 10–20 (start), tune carefully up to 1/p where p is the average ratio of TP labels (true experts), emphasizes rare positives.
   tnw: 1 # usually leave as is, or reduce slightly
   nsd: ${nsd} # negetative sampling distribution (heuristics): uniform, unigram, unigram_b
+  ftpw: ${vivafemme.ftpw}
+  ftnw: ${vivafemme.ftnw}
+  mtpw: ${vivafemme.mtpw}
+  mtnw: ${vivafemme.mtnw}
+  Ftpw: ${vivafemme.Ftpw}
   nmc: 2 # num_monte_carlo, during test, the *.pred files include 'uncertainty' to log the 'pred' and 'model' uncertainties. Both lower, the better (pred has less std and model is confident) but it may be overconfident!
 
 # Thang, Hosseini, Fani; Translative Neural Team Recommendation: From Multilabel Classification to Sequence Prediction. SIGIR2025. https://doi.org/10.1145/3726302.3730259
