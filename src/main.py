@@ -1,9 +1,9 @@
 import os, pickle, logging, numpy as np
 log = logging.getLogger(__name__)
 
-import sys                                 # to save the console in a file
-log_file = open("run_log.txt", "w")
-sys.stdout = log_file
+#import sys                                 # to save the console in a file
+#log_file = open("run_log.txt", "w")
+#sys.stdout = log_file
 
 import hydra
 from omegaconf import OmegaConf #,DictConfig

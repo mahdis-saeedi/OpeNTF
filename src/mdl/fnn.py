@@ -41,8 +41,8 @@ class Fnn(Ntf):
             batch_indices = Ntf.torch.arange(y.shape[0], device=y.device).unsqueeze(1).expand(-1, self.cfg.ns)  # shape [B, ns]
             selected_mask[batch_indices, topk_indices] = True
             condition = condition | selected_mask #those selected neg experts, same loss weight as pos expert
-        female_loss = male_loss = Female_loss = 0
-        if self.cfg.ftpw or self.cfg.ftnw or self.cfg.mtpw or self.cfg.mtnw or self.cfg.Ftpw :
+        female_loss = male_loss = all_female_loss = 0
+        if self.cfg.ftpw or self.cfg.ftnw or self.cfg.mtpw or self.cfg.mtnw :
             import torch
             teamsvecs = self.teamsvecs
             fvector = torch.tensor(teamsvecs['fvector'].toarray(),dtype=Ntf.torch.int32, device=y.device)
@@ -57,12 +57,14 @@ class Fnn(Ntf):
             male_weight = Ntf.torch.where(ym == 1, self.cfg.mtpw, self.cfg.mtnw)
             male_loss = Ntf.torch.nn.functional.binary_cross_entropy_with_logits(y_, ym, male_weight, reduction='none') * (yF == 0).float()
 
-            Female_weight = Ntf.torch.where(yF == 1, self.cfg.Ftpw, 0)
-            Female_loss = Ntf.torch.nn.functional.binary_cross_entropy_with_logits(y_, yF, Female_weight,  reduction='none') * (yF != 0).float()
-
+            if self.cfg.all_female:
+                all_female_weight = Ntf.torch.where(yF == 1, self.cfg.ftpw, 0)
+                all_female_loss = Ntf.torch.nn.functional.binary_cross_entropy_with_logits(y_, yF, all_female_weight,reduction='none') * (yF != 0).float()
+            else:
+                all_female_loss = Ntf.torch.zeros_like(y_)
 
         weight = Ntf.torch.where(condition, self.cfg.tpw, self.cfg.tnw) # the rest neg experts. if this is 0, pure neg sampling
-        return Ntf.torch.nn.functional.binary_cross_entropy_with_logits(y_, y, weight, reduction='none') + female_loss + male_loss + Female_loss
+        return Ntf.torch.nn.functional.binary_cross_entropy_with_logits(y_, y, weight, reduction='none') + female_loss + male_loss + all_female_loss
 
     def ns_uniform(self, y):
         # fully batch-wise and gpu-friendly
@@ -155,9 +157,9 @@ class Fnn(Ntf):
                             #     cdp_loss = apply_weight_decay_data_parameters(loss, class_parameter_minibatch=class_parameters, weight_decay=0.9)
                             # else:
                             loss = self.bxe(y_, y).sum(dim=1).mean() #reduction: 'sum' per instance, 'mean' over batch due to sparsity of multi-hot expert vector in last layer
-                            print('truth =', y)
-                            print ('prediction =',y_)
-                            print ('instance_loss =',self.bxe(y_, y) )
+                            #print('truth =', y)
+                            #print ('prediction =',y_)
+                            #print ('instance_loss =',self.bxe(y_, y) )
 
                             if self.is_bayesian: loss += Fnn.btorch.get_kl_loss(self.model) / y.shape[0]
                             loss.backward(); #shouldn't we have this: if self.cfg.l == 'cdp': cdp_loss.backward()
@@ -201,8 +203,8 @@ class Fnn(Ntf):
         male_counts_train = y_train @ np.logical_not(fvector.cpu().numpy()).astype(int).reshape(-1)
         avg_females_train = female_counts_train.mean()
         avg_males_train = male_counts_train.mean()
-        print('avg_females_train =', avg_females_train)
-        print('avg_males_train =', avg_males_train)
+        #print('avg_females_train =', avg_females_train)
+        #print('avg_males_train =', avg_males_train)
 
         w.close()
 
@@ -249,7 +251,7 @@ class Fnn(Ntf):
                             else: y_pred.append((Ntf.torch.nn.functional.sigmoid(self.model.forward(XX)).squeeze(1)).cpu())
                             # move each batch to main memory before appending; gpu may not have enough memory for the entire test set, like in the dblp dataset
                         y_pred = Ntf.torch.vstack(y_pred)
-                        print('test pred',y_pred)
+                        #print('test pred',y_pred)
                     match = re.search(r'(e\d+)\.pt$', os.path.basename(modelfile))
                     epoch = (match.group(1) + '.') if match else ''
 
@@ -262,5 +264,5 @@ class Fnn(Ntf):
         male_counts_test = y_test @ np.logical_not(fvector.cpu().numpy()).astype(int).reshape(-1)
         avg_females_test = female_counts_test.mean()
         avg_males_test = male_counts_test.mean()
-        print('avg_females_test =', avg_females_test)
-        print('avg_males_test =', avg_males_test)
+        #print('avg_females_test =', avg_females_test)
+        #print('avg_males_test =', avg_males_test)
