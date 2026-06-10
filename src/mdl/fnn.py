@@ -57,7 +57,7 @@ class Fnn(Ntf):
             male_weight = Ntf.torch.where(ym == 1, self.cfg.mtpw, self.cfg.mtnw)
             male_loss = Ntf.torch.nn.functional.binary_cross_entropy_with_logits(y_, ym, male_weight, reduction='none') * (yF == 0).float()
 
-            if self.cfg.all_female:
+            if self.cfg.all_female_in:
                 all_female_weight = Ntf.torch.where(yF == 1, self.cfg.ftpw, 0)
                 all_female_loss = Ntf.torch.nn.functional.binary_cross_entropy_with_logits(y_, yF, all_female_weight,reduction='none') * (yF != 0).float()
             else:
