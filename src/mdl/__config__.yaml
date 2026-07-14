@@ -15,7 +15,7 @@ vivafemme : #R. Moasses, D. Rajaei, H. Loghmani, M. Saeedi, H. Fani; vivafemme: 
   ftnw : 0
   mtpw : 0
   mtnw : 0
-  all_famale_in: False
+  all_female_in: False
 rnd:
   b: ${batch_size}
 
@@ -38,7 +38,7 @@ fnn:
   ftnw: ${vivafemme.ftnw}
   mtpw: ${vivafemme.mtpw}
   mtnw: ${vivafemme.mtnw}
-  all_famale_in: ${vivafemme.all_famale_in}
+  all_female_in: ${vivafemme.all_female_in}
 #Hamidi Rad, Fani, Kargar, Szlichta, Bagheri; Learning to Form Skill-based Teams of Experts. CIKM2020. https://dl.acm.org/doi/10.1145/3340531.3412140
 bnn:
   #thanks to bayesian-torch, all architectural things could be the same as fnn! See https://github.com/IntelLabs/bayesian-torch
