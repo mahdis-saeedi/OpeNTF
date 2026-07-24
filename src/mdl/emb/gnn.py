@@ -144,7 +144,7 @@ class Gnn(T2v):
 
             # we need this list to filter them from the negative sampling edges by pyg (hard neg sample edges)
             # tst_val_edges_homo = Gnn.torch.hstack([val_edge_homo, tst_edge_homo])
-            # assert Gnn.torch.unique(tst_val_edges_homo.T, dim=0).size(0) == tst_val_edges_homo.T.size(0), f'{opentf.textcolor["red"]}Overlapping edges found in test and valid edge sets for homo version of the graph!"{opentf.textcolor["reset"]}'
+            # assert Gnn.torch.unique(tst_val_edges_homo, dim=1).size(1) == tst_val_edges_homo.size(1), f'{opentf.textcolor["red"]}Overlapping edges found in test and valid edge sets for homo version of the graph!"{opentf.textcolor["reset"]}'
 
             # random-walk-based (rw) including n2v and m2v, are unsupervised and learn node embeddings from scratch, using random initialization internally.
             # no need to manually create and initialize node embeddgins like in message-passing-based (mp) methods.
@@ -163,7 +163,7 @@ class Gnn(T2v):
                                      num_negative_samples=self.cfg.model.ns).to(self.device)
 
                 # pos_edges_homo = Gnn.torch.hstack([fold_homo_data.edge_index, tst_val_edges_homo])
-                # assert Gnn.torch.unique(pos_edges_homo.T, dim=0).size(0) == pos_edges_homo.size(0), f'{opentf.textcolor["red"]}Overlapping edges found in train, test, and valid edge sets for homo version of the graph!"{opentf.textcolor["reset"]}'
+                # assert Gnn.torch.unique(pos_edges_homo, dim=1).size(1) == pos_edges_homo.size(1), f'{opentf.textcolor["red"]}Overlapping edges found in train, test, and valid edge sets for homo version of the graph!"{opentf.textcolor["reset"]}'
 
                 self._train_rw(splits, foldidx, val_edge_homo, tst_edge_homo)
                 # self._get_node_emb(homo_data=fold_homo_data) #logging purposes
