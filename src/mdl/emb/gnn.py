@@ -343,6 +343,9 @@ class Gnn(T2v):
         # member pool: ALL members minus those already true-positive in val_edge_homo
         all_members = (node_type == member_tid).nonzero(as_tuple=True)[0]
         member_pool = all_members[~Gnn.torch.isin(all_members, pos_members)]
+        if member_pool.numel() == 0:
+            log.info(f'{opentf.textcolor["yellow"]}All members are connected to validation team nodes and cannot draw negative edges of team-member for validation set! Continue with {member_pool.numel()} negative edge for validation ...{opentf.textcolor["reset"]}')
+            return Gnn.torch.empty((2, 0), dtype=Gnn.torch.long)#, device)
 
         num_neg_m2t = num_neg_total // 2
         num_neg_t2m = num_neg_total - num_neg_m2t
@@ -541,10 +544,9 @@ class Gnn(T2v):
             # in other models, self.model(self.data), that is the forward-pass produces the embedding
             if homo_data is None: homo_data = self.data.to_homogeneous(add_edge_type=True, add_node_type=True)
             embeddings = self.model.embedding.weight.data.cpu() if self.name == 'n2v' else self.model(homo_data.edge_index.to(self.device)).detach().cpu()
-            node_type_tensor = homo_data.node_type # tensor of shape [num_nodes]
-            if node_type is not None: return embeddings[node_type_tensor == (self.data.node_types.index(node_type))]
+            if node_type is not None: return embeddings[homo_data.node_type == (self.data.node_types.index(node_type))]
             for i, node_type in enumerate(self.data.node_types):
-                type_embeddings = embeddings[node_type_tensor == i]  # shape: [num_nodes_of_type, self.cfg.model.d]
+                type_embeddings = embeddings[homo_data.node_type == i]  # shape: [num_nodes_of_type, self.cfg.model.d]
                 result[node_type] = type_embeddings
         return result
 
