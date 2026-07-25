@@ -245,7 +245,11 @@ class Gnn(T2v):
         return Model(self.cfg, self.name, num_nodes)
 
     def _sample_negative_edges(self, num_nodes, num_neg, forbidden_sorted, src_pool=None, dst_pool=None, oversample=1.3):
-        """Untyped (src_pool/dst_pool=None -> any node) or typed (restricted pools) negative sampling."""
+        """Untyped (src_pool/dst_pool=None -> any node) or typed (restricted pools) negative sampling.
+          Possibly duplicate edges depending on how many possible pairs exist relative to how many drawing.
+          E.g., if num_neg >> 0 (ns ratio is high), and if it is called for valid, since the number of valid team nodes is small, more duplicates with one end the valid team node
+        """
+
         if num_neg == 0: return Gnn.torch.empty((2, 0), dtype=Gnn.torch.long)#, device)
         out_src, out_dst, remaining = [], [], num_neg
         while remaining > 0:
@@ -256,18 +260,21 @@ class Gnn(T2v):
             else: dst = dst_pool[Gnn.torch.randint(0, dst_pool.numel(), (trial,))]#, device)]
             keep = src != dst  # harmless no-op when pools are disjoint (typed, diff node types)
             src, dst = src[keep], dst[keep]
-            codes = src * num_nodes + dst
-            pos = Gnn.torch.searchsorted(forbidden_sorted, codes).clamp(max=forbidden_sorted.numel() - 1)
-            is_forbidden = forbidden_sorted[pos] == codes
-            src, dst = src[~is_forbidden], dst[~is_forbidden]
+            if forbidden_sorted.numel() > 0:
+                codes = src * num_nodes + dst
+                pos = Gnn.torch.searchsorted(forbidden_sorted, codes).clamp(max=forbidden_sorted.numel() - 1)
+                is_forbidden = forbidden_sorted[pos] == codes
+                src, dst = src[~is_forbidden], dst[~is_forbidden]
             take = min(src.numel(), remaining)
             out_src.append(src[:take])
             out_dst.append(dst[:take])
             remaining -= take
         return Gnn.torch.stack([Gnn.torch.cat(out_src), Gnn.torch.cat(out_dst)])
 
-    def _sample_negatives_from_contexts_for_train(self, total_neg, train_homo_data, val_edge_homo, tst_edge_homo):
+    def _sample_negatives_from_contexts_for_train(self, num_neg_total, train_homo_data, val_edge_homo, tst_edge_homo):
         """Split total_neg across type-contexts proportional to each type's positive-edge count."""
+        if num_neg_total == 0: return Gnn.torch.empty((2, 0), dtype=Gnn.torch.long)#, device=self.device)
+
         def _build_neg_sampling_context(train_homo_data, val_edge_homo, tst_edge_homo):
             """ Returns a list of per-type sampling contexts if supervision_edge_types is set,
                 otherwise a single untyped context covering the whole graph.
@@ -306,21 +313,20 @@ class Gnn(T2v):
 
         # --- train negatives: typed (per supervision_edge_types) or untyped, filtered against val/test ---
         contexts = _build_neg_sampling_context(train_homo_data, val_edge_homo, tst_edge_homo)
-
-        if total_neg == 0: return Gnn.torch.empty((2, 0), dtype=Gnn.torch.long)#, device=self.device)
         counts = [max(c['pos_edge_index'].size(1), 1) for c in contexts]
         total_pos = sum(counts)
         neg_edges = []
         for c, cnt in zip(contexts, counts):
-            n_neg = int(round(total_neg * cnt / total_pos))
+            n_neg = int(round(num_neg_total * cnt / total_pos))
             neg_edges.append(self._sample_negative_edges(train_homo_data.num_nodes, n_neg, c['forbidden_sorted'], src_pool=c['src_pool'], dst_pool=c['dst_pool']))
         return Gnn.torch.cat(neg_edges, dim=1)
 
-    def _sample_negatives_for_valid(self, train_homo_data, val_edge_homo):
+    def _sample_negatives_for_valid(self, num_neg_total, train_homo_data, val_edge_homo):
         """ Negatives for validation: ns * |val_edge_homo| total, split half member->team, half team->member.
         - team side: restricted to the teams actually present in val_edge_homo (the valid teams)
         - member side: restricted to ALL members EXCEPT those that are true positives in val_edge_homo
         """
+        if num_neg_total == 0: return Gnn.torch.empty((2, 0), dtype=Gnn.torch.long)#, device=self.device)
         ntype_to_id = {ntype: i for i, ntype in enumerate(self.data.node_types)}
         member_tid, team_tid = ntype_to_id['member'], ntype_to_id['team']
         node_type = train_homo_data.node_type#.to(device)
@@ -338,13 +344,11 @@ class Gnn(T2v):
         all_members = (node_type == member_tid).nonzero(as_tuple=True)[0]
         member_pool = all_members[~Gnn.torch.isin(all_members, pos_members)]
 
-        num_pos = val_edge_homo.size(1)
-        num_neg_total = int(num_pos * self.cfg.model.ns)
         num_neg_m2t = num_neg_total // 2
         num_neg_t2m = num_neg_total - num_neg_m2t
 
-        neg_m2t = self._sample_negative_edges(train_homo_data.num_nodes, num_neg_m2t, forbidden_sorted=[], src_pool=member_pool, dst_pool=pos_teams)
-        neg_t2m = self._sample_negative_edges(train_homo_data.num_nodes, num_neg_t2m, forbidden_sorted=[], src_pool=pos_teams, dst_pool=member_pool)
+        neg_m2t = self._sample_negative_edges(train_homo_data.num_nodes, num_neg_m2t, forbidden_sorted=Gnn.torch.tensor([]), src_pool=member_pool, dst_pool=pos_teams)
+        neg_t2m = self._sample_negative_edges(train_homo_data.num_nodes, num_neg_t2m, forbidden_sorted=Gnn.torch.tensor([]), src_pool=pos_teams, dst_pool=member_pool)
         return Gnn.torch.cat([neg_m2t, neg_t2m], dim=1)
 
     def _train_mp(self, splits, foldidx, train_homo_data, val_edge_homo, tst_edge_homo):
@@ -377,15 +381,17 @@ class Gnn(T2v):
                                                           neg_sampling_ratio=0, # we need to explicitly implement typed (i.e., among the supervision_edge_types) negative sampling edges to avoid test/valid edges be part of them
                                                           batch_size=self.cfg.model.b, shuffle=True)
 
-        # similar logic as in test. one side of edges are valid team nodes, the other side is random selection (to make the training loop efficient) from all members but not those in valid teams
-        val_neg_edge_homo = self._sample_negatives_for_valid(train_homo_data, val_edge_homo)
+        # Similar logic as in test. One side of edges are valid team nodes, the other side is random selection (to make the training loop efficient) from all members but not those in valid teams
+        # So, the train and valid loss are remaining on the same scale. Also, early stopping works close to test logic.
+        num_valid_neg = int(val_edge_homo.size(1) * self.cfg.model.ns)
+        val_neg_edge_homo = self._sample_negatives_for_valid(num_valid_neg, train_homo_data, val_edge_homo)
         val_edge_label_index = Gnn.torch.cat([val_edge_homo, val_neg_edge_homo], dim=1)
         val_edge_label = Gnn.torch.cat([Gnn.torch.ones(val_edge_homo.size(1)), Gnn.torch.zeros(val_neg_edge_homo.size(1))])
         valid_loader = self.pyg.loader.LinkNeighborLoader(data=train_homo_data,
                                                           edge_label_index=val_edge_label_index, # only the member-team valid edges (pos) for valid loss calc based on valid set of each fold
                                                           edge_label=val_edge_label,
                                                           num_neighbors=self.cfg.model.nn, # this should match the number of hops/layers
-                                                          neg_sampling_ratio=0, # same logic as in test, we just want to predict existing member <-> team that are removed earlier. So, the train and valid loss are not on the same scale. Early stopping also works close to test logic.
+                                                          neg_sampling_ratio=0,
                                                           batch_size=self.cfg.model.b, shuffle=False)
 
         # note that the same neg and pos train edges and valid loader (pos valid edges) are used over epochs. So, loss comparison between epochs is exactly for same pos and neg edges.
