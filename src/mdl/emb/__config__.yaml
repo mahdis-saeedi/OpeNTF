@@ -152,7 +152,7 @@ model:
         - [ 'member', 'to', 'team' ]
         - [ 'team', 'rev_to', 'member' ]
       ah: 2 # number of attention heads (if applicable)
-      cat: True # multi-head attention aggregation, True: concat, False: mean
+      cat: False # multi-head attention aggregation, True: concat, False: mean
 
     gatv2: ${model.gnn.gat}
 
