@@ -90,11 +90,8 @@ class Gnn(T2v):
         # remove (member to team) and (team to member) edges whose teams are in test set
         test_teams_to_remove = Gnn.torch.tensor(splits['test'])
         mask = Gnn.torch.isin(train_data['member', 'to', 'team'].edge_index[1], test_teams_to_remove)
-        tst_m2t_edges = train_data['member', 'to', 'team'].edge_index[:, mask]
+        tst_pos_m2t_edges = train_data['member', 'to', 'team'].edge_index[:, mask]
         train_data['member', 'to', 'team'].edge_index = train_data['member', 'to', 'team'].edge_index[:, ~mask]
-        # mask = Gnn.torch.isin(train_data['team', 'rev_to', 'member'].edge_index[0], test_teams_to_remove)
-        # tst_t2m_edges = train_data['team', 'rev_to', 'member'].edge_index[:, mask]
-        # train_data['team', 'rev_to', 'member'].edge_index = train_data['team', 'rev_to', 'member'].edge_index[:, ~mask]
         train_data['team', 'rev_to', 'member'].edge_index = train_data['member', 'to', 'team'].edge_index[[1, 0]] # or flip(0)
 
         train_data.validate(raise_on_error=True)
@@ -105,46 +102,40 @@ class Gnn(T2v):
             offsets[node_type] = offset
             offset += train_data[node_type].num_nodes
 
-        tst_member_homo = tst_m2t_edges[0] + offsets['member']
-        tst_team_homo = tst_m2t_edges[1] + offsets['team']
-        tst_m_t_edge_homo = Gnn.torch.stack([tst_member_homo, tst_team_homo], dim=0)
-
-        # tst_team_homo = tst_t2m_edges[0] + offsets['team']
-        # tst_member_homo = tst_t2m_edges[1] + offsets['member']
-        # tst_t_m_edge_homo = Gnn.torch.stack([tst_team_homo, tst_member_homo], dim=0)
-        # tst_t_m_edge_homo = tst_m_t_edge_homo[[1, 0]]
-
-        tst_edge_homo = Gnn.torch.hstack([tst_m_t_edge_homo, tst_m_t_edge_homo[[1, 0]]])
-        assert tst_edge_homo.numel(), f'{opentf.textcolor["red"]}Empty test member-team edge set!"{opentf.textcolor["reset"]}'
+        # tst_pos_m2t_edge = Gnn.torch.stack([tst_pos_m2t_edges[0], tst_pos_m2t_edges[1]], dim=0)
+        # tst_pos_edge = Gnn.torch.cat([tst_pos_m2t_edge, tst_pos_m2t_edge[[1, 0]]], dim=1)  # both m2t and t2m test edges
+        # adjust the node ids for training on homo graphs
+        tst_pos_m2t_edge_homo = Gnn.torch.stack([tst_pos_m2t_edges[0] + offsets['member'], tst_pos_m2t_edges[1] + offsets['team']], dim=0)
+        tst_pos_edge_homo = Gnn.torch.cat([tst_pos_m2t_edge_homo, tst_pos_m2t_edge_homo[[1, 0]]], dim=1) # both m2t and t2m test edges
+        assert tst_pos_edge_homo.numel(), f'{opentf.textcolor["red"]}Empty positive member-team edge set for test set!"{opentf.textcolor["reset"]}'
 
         for foldidx in splits['folds'].keys():
             fold_data = copy.deepcopy(train_data)
             # remove (member to team) and (team to member) edges whose teams are in valid set too
             valid_teams_to_remove = Gnn.torch.tensor(splits['folds'][foldidx]['valid'])
             v_m2t_mask = Gnn.torch.isin(fold_data['member', 'to', 'team'].edge_index[1], valid_teams_to_remove)
-            val_m2t_edges = fold_data['member', 'to', 'team'].edge_index[:, v_m2t_mask]
+            val_pos_m2t_edges = fold_data['member', 'to', 'team'].edge_index[:, v_m2t_mask]
             fold_data['member', 'to', 'team'].edge_index = fold_data['member', 'to', 'team'].edge_index[:, ~v_m2t_mask]
-
-            # v_t2m_mask = Gnn.torch.isin(fold_data['team', 'rev_to', 'member'].edge_index[0], valid_teams_to_remove)
-            # val_t2m_edges = fold_data['team', 'rev_to', 'member'].edge_index[:, v_t2m_mask]
-            # fold_data['team', 'rev_to', 'member'].edge_index = fold_data['team', 'rev_to', 'member'].edge_index[:, ~v_t2m_mask]
             fold_data['team', 'rev_to', 'member'].edge_index = fold_data['member', 'to', 'team'].edge_index[[1, 0]]
 
-            val_member_homo = val_m2t_edges[0] + offsets['member']
-            val_team_homo = val_m2t_edges[1] + offsets['team']
-            val_m_t_edge_homo = Gnn.torch.stack([val_member_homo, val_team_homo], dim=0)
+            val_pos_m2t_edges = Gnn.torch.stack([val_pos_m2t_edges[0], val_pos_m2t_edges[1]], dim=0)
+            val_pos_edge = Gnn.torch.cat([val_pos_m2t_edges, val_pos_m2t_edges[[1, 0]]], dim=1)  # both m2t and t2m valid pos edges
+            # adjust the node ids for training on homo graphs
+            val_pos_m2t_edges_homo = Gnn.torch.stack([val_pos_m2t_edges[0] + offsets['member'], val_pos_m2t_edges[1] + offsets['team']], dim=0)
+            val_pos_edge_homo = Gnn.torch.cat([val_pos_m2t_edges_homo, val_pos_m2t_edges_homo[[1, 0]]], dim=1)# both m2t and t2m valid pos edges
+            assert val_pos_edge_homo.numel(), f'{opentf.textcolor["red"]}Empty positive member-team edge set for validation set!"{opentf.textcolor["reset"]}'
 
-            # val_team_homo = val_t2m_edges[0] + offsets['team']
-            # val_member_homo = val_t2m_edges[1] + offsets['member']
-            # val_t_m_edge_homo = Gnn.torch.stack([val_team_homo, val_member_homo], dim=0)
-            # val_t_m_edge_homo = val_m_t_edge_homo[[1, 0]]
-
-            val_edge_homo = Gnn.torch.hstack([val_m_t_edge_homo, val_m_t_edge_homo[[1, 0]]])
-            assert val_edge_homo.numel(), f'{opentf.textcolor["red"]}Empty valid member-team edge set!"{opentf.textcolor["reset"]}'
-
-            # we need this list to filter them from the negative sampling edges by pyg (hard neg sample edges)
-            # tst_val_edges_homo = Gnn.torch.hstack([val_edge_homo, tst_edge_homo])
+            # tst_val_pos_edges_homo = Gnn.torch.cat([val_pos_edge_homo, tst_pos_edge_homo], dim=1)
             # assert Gnn.torch.unique(tst_val_edges_homo, dim=1).size(1) == tst_val_edges_homo.size(1), f'{opentf.textcolor["red"]}Overlapping edges found in test and valid edge sets for homo version of the graph!"{opentf.textcolor["reset"]}'
+
+            val_edges = {'+': val_pos_edge, '-': Gnn.torch.empty((2, 0), dtype=Gnn.torch.long)}
+            val_edges_homo = {'+': val_pos_edge_homo, '-': Gnn.torch.empty((2, 0), dtype=Gnn.torch.long)}
+            if self.cfg.model.ns > 0:
+                val_neg_m2t_edges_ns = self._sample_negatives_for_valid(val_pos_m2t_edges)
+                val_edges['-'] = Gnn.torch.cat([val_neg_m2t_edges_ns, val_neg_m2t_edges_ns[[1, 0]]], dim=1)
+                val_neg_m2t_edges_ns_homo = Gnn.torch.stack([val_neg_m2t_edges_ns[0] + offsets['member'], val_neg_m2t_edges_ns[1] + offsets['team']])
+                val_edges_homo['-'] = Gnn.torch.cat([val_neg_m2t_edges_ns_homo, val_neg_m2t_edges_ns_homo[[1, 0]]], dim=1)
+
 
             # random-walk-based (rw) including n2v and m2v, are unsupervised and learn node embeddings from scratch, using random initialization internally.
             # no need to manually create and initialize node embeddgins like in message-passing-based (mp) methods.
@@ -154,6 +145,7 @@ class Gnn(T2v):
                 # ImportError: 'Node2Vec' requires either the 'pyg-lib' or 'torch-cluster' package
                 # install_import(f'torch-cluster==1.6.3 -f https://data.pyg.org/whl/torch-{self.torch.__version__}.html', 'torch_cluster')
                 # import importlib; importlib.reload(self.pyg);importlib.reload(self.pyg.typing);importlib.reload(self.pyg.nn)
+                assert self.cfg.model.ns > 0, f'{opentf.textcolor["red"]}Nonzero negative sampling ratio (emb/__config__.yaml.model.ns) is needed for n2v!{opentf.textcolor["reset"]}'
                 self.model = self.pyg.nn.Node2Vec((fold_homo_data:=(fold_data.to_homogeneous(add_edge_type=True, add_node_type=True))).edge_index,
                                      num_nodes=fold_homo_data.num_nodes, #should be explicitly passed to accomodate possible isolated nodes
                                      embedding_dim=self.cfg.model.d,
@@ -162,15 +154,16 @@ class Gnn(T2v):
                                      walks_per_node=self.cfg.model.wn,
                                      num_negative_samples=self.cfg.model.ns).to(self.device)
 
-                # pos_edges_homo = Gnn.torch.hstack([fold_homo_data.edge_index, tst_val_edges_homo])
+                # pos_edges_homo = Gnn.torch.cat([fold_homo_data.edge_index, tst_val_edges_homo], dim=1)
                 # assert Gnn.torch.unique(pos_edges_homo, dim=1).size(1) == pos_edges_homo.size(1), f'{opentf.textcolor["red"]}Overlapping edges found in train, test, and valid edge sets for homo version of the graph!"{opentf.textcolor["reset"]}'
 
-                self._train_rw(splits, foldidx, val_edge_homo, tst_edge_homo)
+                self._train_rw(splits, foldidx, val_edges_homo, tst_pos_edge_homo)
                 # self._get_node_emb(homo_data=fold_homo_data) #logging purposes
 
             elif self.name == 'm2v':
                 # assert isinstance(self.data, self.pyg.data.HeteroData), f'{opentf.textcolor["red"]}Hetero graph is needed for m2v. {self.cfg.graph.structure} is NOT hetero!{opentf.textcolor["reset"]}'
                 assert len(self.data.node_types) > 1, f'{opentf.textcolor["red"]}Hetero graph is needed for m2v. {self.cfg.graph.structure} is NOT hetero!{opentf.textcolor["reset"]}'
+                assert self.cfg.model.ns > 0, f'{opentf.textcolor["red"]}Nonzero negative sampling ratio (emb/__config__.yaml.model.ns) is needed for m2v!{opentf.textcolor["reset"]}'
                 self.model = self.pyg.nn.MetaPath2Vec(edge_index_dict=fold_data.edge_index_dict,
                                                       num_nodes_dict = {ntype: fold_data[ntype].num_nodes for ntype in fold_data.node_types}, #NOTE: if not explicitly set, it does num_nodes = int(edge_index[0].max()) + 1 !!
                                                       metapath=[tuple(mp) for mp in self.cfg.model.metapath_name[0]],
@@ -181,14 +174,16 @@ class Gnn(T2v):
                                                       num_negative_samples=self.cfg.model.ns).to(self.device)
                 # m2v only creates embeddings for node types in metapaths, it skips for others, so
                 # the node ids of original graph should be relative to m2v indexing
-                val_m_t_edge_homo[0] = val_m2t_edges[0] + self.model.start['member']
-                val_m_t_edge_homo[1] = val_m2t_edges[1] + self.model.start['team']
-                val_edge_homo = Gnn.torch.hstack([val_m_t_edge_homo, val_m_t_edge_homo[[1, 0]]])
-                tst_m_t_edge_homo[0] = tst_m2t_edges[0] + self.model.start['member']
-                tst_m_t_edge_homo[1] = tst_m2t_edges[1] + self.model.start['team']
-                tst_edge_homo = Gnn.torch.hstack([tst_m_t_edge_homo, tst_m_t_edge_homo[[1, 0]]])
+                m2t_pos_edges = val_edges['+'][:, :val_edges['+'].size(1)//2]
+                m2t_pos_edges[0] = m2t_pos_edges[0] + self.model.start['member']
+                m2t_pos_edges[1] = m2t_pos_edges[1] + self.model.start['team']
+                val_edges['+'] = Gnn.torch.cat([m2t_pos_edges, m2t_pos_edges[[1, 0]]])
+                m2t_neg_edges = val_edges['-'][:, :val_edges['+'].size(1) // 2]
+                m2t_neg_edges[0] = m2t_neg_edges[0] + self.model.start['member']
+                m2t_neg_edges[1] = m2t_neg_edges[1] + self.model.start['team']
+                val_edges['-'] = Gnn.torch.cat([m2t_neg_edges, m2t_neg_edges[[1, 0]]])
 
-                self._train_rw(splits, foldidx, val_edge_homo, tst_edge_homo)
+                self._train_rw(splits, foldidx, val_edges, tst_pos_edge_homo)
                 # self._get_node_emb(homo_data=fold_data) #logging purposes
 
             elif self.name == 'han':
@@ -207,7 +202,7 @@ class Gnn(T2v):
                 # building multilayer gnn-based model. Shouldn't depend on data. but as our graph has no features for node (for now), we need to assign a randomly initialized embeddings as node features.
                 # so, we need the num_nodes of the graph
                 self.model = self._built_model_mp(fold_train_homo_data.num_nodes).to(self.device)
-                self._train_mp(splits, foldidx, fold_train_homo_data, val_edge_homo, tst_edge_homo)
+                self._train_mp(splits, foldidx, fold_train_homo_data, val_edges_homo, tst_pos_edge_homo)
                 # self._get_node_emb(homo_data=fold_homo_data) #logging purposes
 
 
@@ -271,11 +266,11 @@ class Gnn(T2v):
             remaining -= take
         return Gnn.torch.stack([Gnn.torch.cat(out_src), Gnn.torch.cat(out_dst)])
 
-    def _sample_negatives_from_contexts_for_train(self, num_neg_total, train_homo_data, val_edge_homo, tst_edge_homo):
+    def _sample_negatives_from_contexts_for_train(self, num_neg_total, train_homo_data, val_pos_edge_homo, tst_pos_edge_homo):
         """Split total_neg across type-contexts proportional to each type's positive-edge count."""
         if num_neg_total == 0: return Gnn.torch.empty((2, 0), dtype=Gnn.torch.long)#, device=self.device)
 
-        def _build_neg_sampling_context(train_homo_data, val_edge_homo, tst_edge_homo):
+        def _build_neg_sampling_context(train_homo_data, val_pos_edge_homo, tst_pos_edge_homo):
             """ Returns a list of per-type sampling contexts if supervision_edge_types is set,
                 otherwise a single untyped context covering the whole graph.
                 val/test edges are always folded into `forbidden` WITHOUT type filtering
@@ -304,15 +299,15 @@ class Gnn(T2v):
                     dst_pool = (train_homo_data.node_type == ntype_to_id[dst_type]).nonzero(as_tuple=True)[0]#.to(self.device)
 
                     # val/test folded in as-is, no type filtering needed (over-forbidding is harmless)
-                    forbidden = _sorted_codes([pos_edge_index, val_edge_homo, tst_edge_homo], train_homo_data.num_nodes)
+                    forbidden = _sorted_codes([pos_edge_index, val_pos_edge_homo, tst_pos_edge_homo], train_homo_data.num_nodes)
                     contexts.append({'pos_edge_index': pos_edge_index, 'forbidden_sorted': forbidden, 'src_pool': src_pool, 'dst_pool': dst_pool, })
                 return contexts
             else:
-                forbidden = _sorted_codes([train_homo_data.edge_index, val_edge_homo, tst_edge_homo], train_homo_data.num_nodes)
+                forbidden = _sorted_codes([train_homo_data.edge_index, val_pos_edge_homo, tst_pos_edge_homo], train_homo_data.num_nodes)
                 return [{'pos_edge_index': train_homo_data.edge_index, 'forbidden_sorted': forbidden, 'src_pool': None, 'dst_pool': None, }]
 
         # --- train negatives: typed (per supervision_edge_types) or untyped, filtered against val/test ---
-        contexts = _build_neg_sampling_context(train_homo_data, val_edge_homo, tst_edge_homo)
+        contexts = _build_neg_sampling_context(train_homo_data, val_pos_edge_homo, tst_pos_edge_homo)
         counts = [max(c['pos_edge_index'].size(1), 1) for c in contexts]
         total_pos = sum(counts)
         neg_edges = []
@@ -321,40 +316,29 @@ class Gnn(T2v):
             neg_edges.append(self._sample_negative_edges(train_homo_data.num_nodes, n_neg, c['forbidden_sorted'], src_pool=c['src_pool'], dst_pool=c['dst_pool']))
         return Gnn.torch.cat(neg_edges, dim=1)
 
-    def _sample_negatives_for_valid(self, num_neg_total, train_homo_data, val_edge_homo):
-        """ Negatives for validation: ns * |val_edge_homo| total, split half member->team, half team->member.
-        - team side: restricted to the teams actually present in val_edge_homo (the valid teams)
-        - member side: restricted to ALL members EXCEPT those that are true positives in val_edge_homo
-        """
-        if num_neg_total == 0: return Gnn.torch.empty((2, 0), dtype=Gnn.torch.long)#, device=self.device)
-        ntype_to_id = {ntype: i for i, ntype in enumerate(self.data.node_types)}
-        member_tid, team_tid = ntype_to_id['member'], ntype_to_id['team']
-        node_type = train_homo_data.node_type#.to(device)
-        # split val_edge_homo into its two directional blocks by endpoint type (robust to ordering)
-        src_type, dst_type = node_type[val_edge_homo[0]], node_type[val_edge_homo[1]]
-        m2t_mask = (src_type == member_tid) & (dst_type == team_tid)
-        t2m_mask = (src_type == team_tid) & (dst_type == member_tid)
-        val_m2t = val_edge_homo[:, m2t_mask]  # (member, team)
-        val_t2m = val_edge_homo[:, t2m_mask]  # (team, member)
+    def _sample_negatives_for_valid(self, val_pos_m2t_edges):
+        num_members = self.data['member'].num_nodes
+        neg_edges = []
+        for team in val_pos_m2t_edges[1].unique():
+            pos_members = val_pos_m2t_edges[0][val_pos_m2t_edges[1] == team].unique()
+            num_neg = min(int(pos_members.numel() * self.cfg.model.ns), num_members - pos_members.numel())
+            if num_neg == 0: continue
+            mask = Gnn.torch.zeros(num_members, dtype=Gnn.torch.bool)
+            mask[pos_members] = True
+            sampled = []
+            while sum(x.numel() for x in sampled) < num_neg:
+                candidates = Gnn.torch.randint(0, num_members, (2 * (num_neg - sum(x.numel() for x in sampled)),), )
+                candidates = Gnn.torch.unique(candidates[~mask[candidates]])
+                if candidates.numel():
+                    sampled.append(candidates[:num_neg - sum(x.numel() for x in sampled)])
+                    mask[sampled[-1]] = True
 
-        # true-positive endpoints for this fold's valid teams
-        pos_members, pos_teams = Gnn.torch.cat([val_m2t[0], val_t2m[1]]).unique(), Gnn.torch.cat([val_m2t[1], val_t2m[0]]).unique()
+            sampled = Gnn.torch.cat(sampled)
+            neg_edges.append(Gnn.torch.stack([sampled, team.expand(sampled.size(0))]))
 
-        # member pool: ALL members minus those already true-positive in val_edge_homo
-        all_members = (node_type == member_tid).nonzero(as_tuple=True)[0]
-        member_pool = all_members[~Gnn.torch.isin(all_members, pos_members)]
-        if member_pool.numel() == 0:
-            log.info(f'{opentf.textcolor["yellow"]}All members are connected to validation team nodes and cannot draw negative edges of team-member for validation set! Continue with {member_pool.numel()} negative edge for validation ...{opentf.textcolor["reset"]}')
-            return Gnn.torch.empty((2, 0), dtype=Gnn.torch.long)#, device)
+        return Gnn.torch.cat(neg_edges, dim=1) if neg_edges else Gnn.torch.empty((2, 0), dtype=Gnn.torch.long)
 
-        num_neg_m2t = num_neg_total // 2
-        num_neg_t2m = num_neg_total - num_neg_m2t
-
-        neg_m2t = self._sample_negative_edges(train_homo_data.num_nodes, num_neg_m2t, forbidden_sorted=Gnn.torch.tensor([]), src_pool=member_pool, dst_pool=pos_teams)
-        neg_t2m = self._sample_negative_edges(train_homo_data.num_nodes, num_neg_t2m, forbidden_sorted=Gnn.torch.tensor([]), src_pool=pos_teams, dst_pool=member_pool)
-        return Gnn.torch.cat([neg_m2t, neg_t2m], dim=1)
-
-    def _train_mp(self, splits, foldidx, train_homo_data, val_edge_homo, tst_edge_homo):
+    def _train_mp(self, splits, foldidx, train_homo_data, val_edge_homo, tst_pos_edge_homo):
         try:
             log.info(f'Loading the model {self.output}/f{foldidx}.pt ...')
             return self.model.load_state_dict(Gnn.torch.load(f'{self.output}/f{foldidx}.pt', map_location=self.device)['model_state_dict'])
@@ -374,7 +358,7 @@ class Gnn(T2v):
             pos_train_edge_homo = train_homo_data.edge_index[:, sup_edge_ids]
 
         num_train_neg = int(pos_train_edge_homo.size(1) * self.cfg.model.ns)
-        neg_train_edge_homo = self._sample_negatives_from_contexts_for_train(num_train_neg, train_homo_data, val_edge_homo, tst_edge_homo)
+        neg_train_edge_homo = self._sample_negatives_from_contexts_for_train(num_train_neg, train_homo_data, val_edge_homo['+'], tst_pos_edge_homo)
         train_edge_label_index = Gnn.torch.cat([pos_train_edge_homo, neg_train_edge_homo], dim=1)
         train_edge_label = Gnn.torch.cat([Gnn.torch.ones(pos_train_edge_homo.size(1)), Gnn.torch.zeros(neg_train_edge_homo.size(1))])
         train_loader = self.pyg.loader.LinkNeighborLoader(data=train_homo_data, # the transductive part (all nodes but only train edges for message passing w/o test/valid edges. they are already removed.
@@ -384,12 +368,8 @@ class Gnn(T2v):
                                                           neg_sampling_ratio=0, # we need to explicitly implement typed (i.e., among the supervision_edge_types) negative sampling edges to avoid test/valid edges be part of them
                                                           batch_size=self.cfg.model.b, shuffle=True)
 
-        # Similar logic as in test. One side of edges are valid team nodes, the other side is random selection (to make the training loop efficient) from all members but not those in valid teams
-        # So, the train and valid loss are remaining on the same scale. Also, early stopping works close to test logic.
-        num_valid_neg = int(val_edge_homo.size(1) * self.cfg.model.ns)
-        val_neg_edge_homo = self._sample_negatives_for_valid(num_valid_neg, train_homo_data, val_edge_homo)
-        val_edge_label_index = Gnn.torch.cat([val_edge_homo, val_neg_edge_homo], dim=1)
-        val_edge_label = Gnn.torch.cat([Gnn.torch.ones(val_edge_homo.size(1)), Gnn.torch.zeros(val_neg_edge_homo.size(1))])
+        val_edge_label_index = Gnn.torch.cat([val_edge_homo['+'], val_edge_homo['-']], dim=1)
+        val_edge_label = Gnn.torch.cat([Gnn.torch.ones(val_edge_homo['+'].size(1)), Gnn.torch.zeros(val_edge_homo['-'].size(1))])
         valid_loader = self.pyg.loader.LinkNeighborLoader(data=train_homo_data,
                                                           edge_label_index=val_edge_label_index, # only the member-team valid edges (pos) for valid loss calc based on valid set of each fold
                                                           edge_label=val_edge_label,
@@ -440,7 +420,7 @@ class Gnn(T2v):
         log.info(f'{self.name} model with {opentf.cfg2str(self.cfg.model)} saved at {self.output}/f{foldidx}.pt.')
         self.w.close()
 
-    def _train_rw(self, splits, foldidx, val_edge_homo, tst_edge_homo):
+    def _train_rw(self, splits, foldidx, val_edge_homo, tst_pos_edge_homo):
         try:
             log.info(f'Loading the model {self.output}/f{foldidx}.pt ...')
             return self.model.load_state_dict(Gnn.torch.load(f'{self.output}/f{foldidx}.pt', map_location=self.device)['model_state_dict'])
@@ -454,6 +434,7 @@ class Gnn(T2v):
         earlystopping = EarlyStopping(Gnn.torch, patience=self.cfg.model.es, verbose=True, save_model=False, trace_func=log.info)
         self.torch.cuda.empty_cache()
 
+        val_labels = Gnn.torch.cat([Gnn.torch.ones(val_edge_homo['+'].size(1)), Gnn.torch.zeros(val_edge_homo['-'].size(1))]).to(self.device)
         for e in range(self.cfg.model.e):
             t_loss = 0; self.model.train()
             for pos_rw, neg_rw in loader:
@@ -462,17 +443,11 @@ class Gnn(T2v):
                 loss.backward(); optimizer.step(); t_loss += loss.item()
 
             self.model.eval()
-            scores = (self.model.embedding.weight[val_edge_homo[0]] * self.model.embedding.weight[val_edge_homo[1]]).sum(dim=-1)
-
-            # w/ pos and neg samples for validation
-            # pos_scores = (z[val_edge_index[0]] * z[val_edge_index[1]]).sum(dim=-1)
-            # neg_edge_index = Gnn.pyg.utils.negative_sampling(edge_index=self.model.edge_index, num_nodes=self.model.num_nodes, num_neg_samples=val_edge_index.size(1), method='sparse')
-            # neg_scores = (z[neg_edge_index[0]] * z[neg_edge_index[1]]).sum(dim=-1)
-            # scores = Gnn.torch.cat([pos_scores, neg_scores])
-            # labels = Gnn.torch.cat([self.torch.ones_like(pos_scores), Gnn.torch.zeros_like(neg_scores)])
-            # v_loss = Gnn.torch.F.binary_cross_entropy_with_logits(scores, labels, reduction='mean').item()
-
-            v_loss = Gnn.torch.nn.functional.binary_cross_entropy_with_logits(scores, self.torch.ones_like(scores), reduction='mean').item()
+            z = self.model.embedding.weight
+            pos_scores = (z[val_edge_homo['+'][0]] * z[val_edge_homo['+'][1]]).sum(dim=-1)
+            neg_scores = (z[val_edge_homo['-'][0]] * z[val_edge_homo['-'][1]]).sum(dim=-1)
+            scores = Gnn.torch.cat([pos_scores, neg_scores])
+            v_loss = Gnn.torch.nn.functional.binary_cross_entropy_with_logits(scores, val_labels, reduction='mean').item()
 
             t_loss /= len(loader); v_loss /= len(scores)
             # self.writer.add_embedding(node_embeddings, global_step=e) >> would be nice to see the convergence of embeddings for node
