@@ -231,9 +231,8 @@ class Gnn(T2v):
                 else: self.encoder = self.torch.nn.ModuleList([conv_cls(cfg.model.d, cfg.model.d)])
             def forward(self, edge_index, n_id=None):
                 x = self.node_emb.weight if n_id is None else self.node_emb(n_id)
-                for i, conv in enumerate(self.encoder):
-                    x = conv(x, edge_index)
-                    if i < len(self.encoder) - 1: x = self.torch.nn.functional.relu(x)
+                for conv in self.encoder[:-1]: x = self.torch.nn.functional.relu(conv(x, edge_index))
+                x = self.encoder[-1](x, edge_index) #last layer with no activation for unrestricted values
                 return x
 
             # decoder part: as simple as dot-product or as complex as a MLP-based binary classifier (indeed another end2end approach with fnn and bnn!)
