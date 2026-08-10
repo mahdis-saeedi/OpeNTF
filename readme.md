@@ -9,7 +9,7 @@
 
  ---
  
-> 2026, XXXX, Graph Neural Team Recommendation: An Integrated Approach. `Under Review` [`pdf`](https://hosseinfani.github.io/res/papers/Graph_Neural_Team_Recommendation_An_Integrated_Approach.pdf) 
+> 2026, arXiv, Graph Neural Team Recommendation: An Integrated Approach. `Under Review` [`pdf`](https://hosseinfani.github.io/res/papers/2026_arXiv_Graph_Neural_Team_Recommendation_An_Integrated_Approach.pdf) 
 
 > 2026, SIGIR, OpeNTF2: Fairness-aware Graph Neural Team Formation. [`pdf`](https://hosseinfani.github.io/res/papers/2026_SIGIR_OpeNTF2_Fairness-aware_Graph_Neural_Team_Formation.pdf) [`doi`](https://doi.org/10.1145/3805712.3808605) [`reviews`](https://hosseinfani.github.io/res/papers/2026_SIGIR_OpeNTF2_Fairness-aware_Graph_Neural_Team_Formation.txt) [`poster`](https://hosseinfani.github.io/res/posters/2026_SIGIR_OpeNTF2_Fairness-aware_Graph_Neural_Team_Formation.pdf)
  
@@ -27,9 +27,11 @@
 
 ---
 
-> 2026, WWW, Learning Collaborative Teams via Social Information Retrieval. [`pdf`](https://hosseinfani.github.io/res/papers/2026_Learning_Collaborative_Teams_via_Social_Information_Retrieval.pdf) [`web`](https://fani-lab.github.io/OpeNTF/tutorial/www26/)
+> 2026, RecSys, Beyond Searching a Village: Learning to Recommend Diverse and Successful Collaborative Teams. [`pdf`](https://hosseinfani.github.io/res/papers/2026_RecSys_Beyond_Searching_a_Village_Learning_to_Recommend_Diverse_and_Successful_Collaborative_Teams.pdf) [`web`](https://fani-lab.github.io/OpeNTF/tutorial/recsys26/) [`doi`](https://doi.org/10.1145/3773078.3831859)
 
-> 2025, CIKM, Neural Shifts in Collaborative Team Recommendation. [`pdf`](https://hosseinfani.github.io/res/papers/2025_CIKM_Neural_Shifts_in_Collaborative_Team_Recommendation.pdf) [`web`](https://fani-lab.github.io/OpeNTF/tutorial/cikm25/)
+> 2026, WWW, Learning Collaborative Teams via Social Information Retrieval. [`pdf`](https://hosseinfani.github.io/res/papers/2026_WWW_Learning_Collaborative_Teams_via_Social_Information_Retrieval.pdf) [`web`](https://fani-lab.github.io/OpeNTF/tutorial/www26/)
+
+> 2025, CIKM, Neural Shifts in Collaborative Team Recommendation. [`pdf`](https://hosseinfani.github.io/res/papers/2025_CIKM_Neural_Shifts_in_Collaborative_Team_Recommendation.pdf) [`web`](https://fani-lab.github.io/OpeNTF/tutorial/cikm25/) [`doi`](https://doi.org/10.1145/3746252.3761456)
 
 > 2025, WSDM, Bridging Subgraph Optimization and Graph Neural Network in Team Recommendations. [`pdf`](https://hosseinfani.github.io/res/papers/2025_WSDM_Bridging_Historical_Subgraph_Optimization_and_Modern_Graph_Neural_Network_Approaches_in_Team_Recommendations.pdf) [`web`](https://fani-lab.github.io/OpeNTF/tutorial/wsdm25/) [`doi`](https://dl.acm.org/doi/10.1145/3701551.3703483) [`ppt`](https://hosseinfani.github.io/res/slides/2025_WSDM_Bridging_Historical_Subgraph_Optimization_and_Modern_Graph_Neural_Network_Approaches_in_Team_Recommendations.pdf)
 
