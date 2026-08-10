@@ -229,8 +229,8 @@ class Gnn(T2v):
                 if 'h' in cfg.model and cfg.model.h is not None and len(cfg.model.h) > 0:
                     for i, l in enumerate(cfg.model.h): self.encoder.append(conv_cls(cfg.model.d if i == 0 else cfg.model.h[i - 1], cfg.model.h[i]))
                 else: self.encoder = self.torch.nn.ModuleList([conv_cls(cfg.model.d, cfg.model.d)])
-            def forward(self, edge_index):
-                x = self.node_emb.weight
+            def forward(self, edge_index, n_id=None):
+                x = self.node_emb.weight if n_id is None else self.node_emb(n_id)
                 for i, conv in enumerate(self.encoder):
                     x = conv(x, edge_index)
                     if i < len(self.encoder) - 1: x = self.torch.nn.functional.relu(x)
@@ -391,7 +391,7 @@ class Gnn(T2v):
                 # #the node indexes in batch.edge_index and batch.edge_label_index are localized in minibatches. batch.n_id contains the respective indexes passed in edge_label_index arg.
                 # src_local, dst_local = batch.edge_label_index[0], batch.edge_label_index[1]
                 # src_global, dst_global = batch.n_id[src_local], batch.n_id[dst_local]
-                x = self.model.forward(batch.edge_index) # contains edges with neigbourhood sampling subset of train_homo_data.edge_index but w/o valid/test edges
+                x = self.model.forward(batch.edge_index, batch.n_id) # contains edges with neigbourhood sampling subset of train_homo_data.edge_index but w/o valid/test edges
                 pred = self.model.decode(x[batch.edge_label_index[0]], x[batch.edge_label_index[1]])
                 loss = self.torch.nn.functional.binary_cross_entropy_with_logits(pred, batch.edge_label.float(), reduction='mean')
                 if optimizer: loss.backward(); optimizer.step();
