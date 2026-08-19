@@ -113,7 +113,7 @@ def run(cfg):
             if cfg.fair.attribute == 'popularity':
                 assert len(cfg.fair.is_popular_alg) == 1, 'for vivafemme, is_popular_alg should be single value.'
             with tempfile.TemporaryDirectory() as tmp_output:
-                _, minorities, _ = adila.prep(tmp_output, fair_notion='dp', attribute=cfg.fair.attribute[0], is_popular_alg=cfg.fair.is_popular_alg[0], coef=cfg.fair.is_popular_coef, plot=plot)
+                _, minorities, _ = adila.prep(tmp_output, fair_notion='dp', attribute=cfg.fair.attribute[0], is_popular_alg=cfg.fair.is_popular_alg[0], coef=cfg.fair.is_popular_coef)
             #fvector = np.zeros(teamsvecs['member'].shape[1], dtype=bool)
             #fvector[minorities] = True
             fvector = lil_matrix((1, teamsvecs['member'].shape[1]), dtype=bool)
